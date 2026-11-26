@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fretboard Trainer</title>
+<meta name="description" content="A guitar fretboard quiz: find notes, name spots, and answer by playing your guitar into the microphone.">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="css/styles.css">
+<script data-goatcounter="https://fretboard-trainer.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <div class="brand">
+    <h1>Fretboard Trainer</h1>
+    <p>Standard tuning · notes named at sounding pitch, so the open low E is E2 and middle C is C4</p>
+  </div>
+  <div class="score" aria-live="polite">
+    <div class="stat"><b id="stOk">0</b><span>right</span></div>
+    <div class="stat"><b id="stBad">0</b><span>wrong</span></div>
+    <div class="stat"><b id="stAcc">–</b><span>accuracy</span></div>
+    <div class="stat"><b id="stStreak">0</b><span>streak</span></div>
+    <div class="stat"><b id="stAvg">–</b><span>avg time (right)</span></div>
+  </div>
+  <div class="row"><button id="restartBtn" title="Clear the score and start over">Restart</button><button id="startBtn" class="primary">Start</button></div>
+</header>
+
+<section class="boardwrap" aria-label="Fretboard">
+  <div class="toolbar">
+    <span id="selText" class="seltext"></span>
+    <div class="row">
+      <button id="allBtn">Whole fretboard</button>
+      <button id="clearBtn">Clear</button>
+      <select id="maxFret" aria-label="Neck length">
+        <option value="12">12 frets</option><option value="15">15 frets</option><option value="19">19 frets</option>
+        <option value="21">21 frets</option><option value="22">22 frets</option><option value="24">24 frets</option></select>
+      <select id="showNotes" aria-label="Show note names"><option value="off">Hide names</option><option value="name">Show names</option><option value="oct">Show names + octave</option></select>
+    </div>
+  </div>
+  <svg id="board" viewBox="0 0 1200 252" role="img" aria-label="Guitar fretboard, high e string on top"></svg>
+  <p class="hint boardhint">Drag across the neck to choose where you are quizzed; each new drag adds to the area. Click a string's name to add or remove it. Click any spot to hear it.</p>
+</section>
+
+<section class="stage">
+  <div class="card promptcard">
+    <div class="beats" id="beats"></div>
+    <div id="prompt" class="prompt">Press Start</div>
+    <div id="sub" class="sub">Set the area, notes, quiz and tempo below, or keep the defaults.</div>
+    <div id="answers" class="answers"></div>
+    <div class="row">
+      <button id="replayBtn" hidden>Play again (R)</button>
+      <button id="skipBtn" hidden>Show answer</button>
+      <button id="nextBtn" class="primary" hidden>Next (Enter)</button>
+      <span id="feedback" class="feedback" aria-live="polite"></span>
+    </div>
+  </div>
+  <div class="card">
+    <h3>Microphone</h3>
+    <div class="row"><button id="micBtn">Turn mic on</button></div>
+    <div class="heard"><span id="heardNote">—</span><span id="heardCents"></span></div>
+    <div class="meter" title="Input level; the line is the sensitivity threshold"><div id="meterFill"></div><div id="meterThr"></div></div>
+    <div class="field"><label for="sens">Threshold</label><input type="range" id="sens" min="0.002" max="0.06" step="0.001"></div>
+    <p class="hint" id="micHint">Pitch is judged to the nearest semitone. Headphones keep the app's own sounds out of the mic.</p>
+  </div>
+</section>
+
+<section class="settings">
+  <div class="card">
+    <h3>Notes to ask</h3>
+    <div class="seg" id="poolSeg"><button data-v="types">By type</button><button data-v="scale">From a scale</button><button data-v="custom">Pick notes</button></div>
+    <div class="checks" id="typeRow">
+      <label><input type="checkbox" id="nat"> Naturals</label>
+      <label><input type="checkbox" id="sharp"> Sharps ♯</label>
+      <label><input type="checkbox" id="flat"> Flats ♭</label>
+    </div>
+    <div id="customRow" class="chips" aria-label="Notes to practise"></div>
+    <div class="field" id="scaleRow"><select id="tonic" aria-label="Key"></select><select id="scale" aria-label="Scale"></select></div>
+    <p class="hint mono" id="poolPreview"></p>
+  </div>
+
+  <div class="card">
+    <h3>Quiz</h3>
+    <div class="seg" id="modeSeg">
+      <button data-v="find">Find the note</button><button data-v="name">Name the spot</button><button data-v="near">Nearest note</button><button data-v="ear">By ear</button>
+    </div>
+    <div class="field" id="nearRow"><label for="nearDir">Direction</label><select id="nearDir">
+      <option value="any">Nearest in any direction</option><option value="dir">Nearest higher or lower</option><option value="mix">Mix</option></select></div>
+    <div class="field" id="targetRow"><label for="target">Ask for</label><select id="target">
+      <option value="any">Any position</option>
+      <option value="every">Every position</option>
+      <option value="exact">Exact pitch (e.g. G3)</option>
+      <option value="ordinal">Lowest, 2nd lowest… highest</option>
+      <option value="mix">Mix of these</option></select></div>
+    <div class="field"><label for="answerBy">Answer by</label><select id="answerBy"></select></div>
+    <div class="field" id="octRow"><label class="checks"><label><input type="checkbox" id="octaveStrict"> Octave must match</label></label></div>
+  </div>
+
+  <div class="card">
+    <h3>Tempo</h3>
+    <div class="seg" id="timingSeg"><button data-v="free">No time limit</button><button data-v="metro">Metronome</button></div>
+    <div class="field" id="bpmRow"><label for="bpm">BPM</label><input type="range" id="bpmR" min="30" max="160" step="1" aria-label="BPM slider"><input type="number" id="bpm" min="30" max="160"></div>
+    <div class="field" id="beatsRow"><label for="beatsSel">Beats per question</label><select id="beatsSel">
+      <option>1</option><option>2</option><option>3</option><option>4</option><option>6</option><option>8</option></select></div>
+    <div class="field" id="pauseRow"><label for="pause">After an answer</label><select id="pause">
+      <option value="1.5">next in 1.5 s (wrong: 3 s)</option><option value="3">next in 3 s (wrong: 4.5 s)</option><option value="5">next in 5 s (wrong: 6.5 s)</option><option value="8">next in 8 s (wrong: 9.5 s)</option><option value="wait">wait for Next</option></select></div>
+    <p class="hint" id="tempoHint"></p>
+  </div>
+</section>
+
+<section class="card">
+  <div class="row" style="justify-content:space-between"><h3>Trouble spots this session</h3><div class="row"><button id="csvBtn">Download session CSV</button><button id="resetBtn">Reset score</button></div></div>
+  <ul class="weak" id="weak"></ul>
+</section>
+
+<details class="help">
+  <summary>How positions are asked when a note appears more than once</summary>
+  <ul>
+    <li><b>Any position</b>: every spot with that note name counts.</li>
+    <li><b>Every position</b>: click all of them in the area (fretboard clicks only).</li>
+    <li><b>Exact pitch</b>: the note with its octave number, like G3 or E4. This is the clearest way to point at one specific pitch: it never changes meaning when you change the area, and it teaches you where the octaves sit. If the same pitch exists on two strings (E4 is open e and also B string fret 5), either one is right.</li>
+    <li><b>Nearest note</b> (its own quiz): you choose the first starting spot by clicking or playing it; after that each question starts from the spot you should have found. The starting spot is marked on the neck and you find the closest spot in your area with the asked note, measured in frets and strings. With Direction set to “higher or lower”, every question asks for the nearest one that sounds higher (or lower) than where you are; otherwise direction is only given when the asked note is the same as the starting note, meaning the next octave that way. Ties all count.</li>
+    <li><b>Lowest / 2nd lowest / highest</b>: counted by pitch inside the selected area, so “2nd lowest G” depends on the area you picked.</li>
+  </ul>
+  <p>Keys: Space starts or stops, 1–9 picks an answer, R replays the note.</p>
+</details>
+
+<footer class="foot">
+  <p>Privacy: the microphone sound is analyzed in your browser and is never recorded or uploaded. Your settings and the session CSV stay in your browser. The site counts page visits with GoatCounter, which sets no cookies and collects no personal data.</p>
+  <p><span id="versionLbl"></span>, vibe coded with Claude</p>
+</footer>
+</div>
+
+<script src="js/app.js"></script>
+</body>
+</html>
